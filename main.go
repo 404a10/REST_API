@@ -144,7 +144,7 @@ func handleRequests() {
 }
 
 func main() {
-	db, err = gorm.Open("mysql", "potato:potato@tcp(127.0.0.1:3306)/Football?charset=utf8&parseTime=True")
+	db, err = gorm.Open("mysql", "mysql:mysql@tcp(127.0.0.1:3306)/Football?charset=utf8&parseTime=True")
 
 	if err != nil {
 		log.Fatalln(red.Render("Failed to open the database."))
