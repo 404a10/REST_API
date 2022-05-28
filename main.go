@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/gookit/color"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
@@ -21,9 +22,16 @@ type Booking struct {
 	Members int    `json:"members"`
 }
 
+var (
+	red    = color.FgRed
+	green  = color.FgGreen
+	blue   = color.FgBlue
+	yellow = color.FgYellow
+)
+
 func homePage(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Welcome to the homepage 👌")
-	log.Println("Endpoint Hit: Homepage")
+	log.Println(yellow.Render("Endpoint Hit: Homepage"))
 }
 
 func createBooking(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +49,7 @@ func createBooking(w http.ResponseWriter, r *http.Request) {
 
 	db.Create(booking)
 
-	log.Println("Endpoint Hit: Creating New Booking")
+	log.Println(yellow.Render("Endpoint Hit: Creating New Booking"))
 	err = json.NewEncoder(w).Encode(booking)
 	if err != nil {
 		return
@@ -65,16 +73,22 @@ func returnSingleBooking(w http.ResponseWriter, r *http.Request) {
 	key := vars["id"]
 	bookings := []Booking{}
 	db.Find(&bookings)
+	var found bool
+	found = false
 
 	for _, booking := range bookings {
 		s, err := strconv.Atoi(key)
 		if err == nil {
 			if booking.Id == s {
+				found = true
 				log.Println(booking)
 				log.Println("Endpoint Hit: Booking No: ", key)
 				json.NewEncoder(w).Encode(booking)
 			}
 		}
+	}
+	if found == false {
+		json.NewEncoder(w).Encode("Error 404: Booking not found")
 	}
 }
 
@@ -88,24 +102,43 @@ func deleteBooking(w http.ResponseWriter, r *http.Request) {
 		s, err := strconv.Atoi(key)
 		if err == nil {
 			if booking.Id == s {
-				log.Println(booking)
+				log.Printf(red.Render("Endpoint Hit: Deleted booking Nª", s))
 				db.Delete(booking)
-				json.NewEncoder(w).Encode("Deleted successfully")
+				json.NewEncoder(w).Encode("Deleted from the database")
 			}
 		}
 	}
 }
 
+func updateBooking(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	key := vars["id"]
+
+	reqbody, _ := ioutil.ReadAll(r.Body)
+	bookingId, _ := strconv.Atoi(key)
+
+	booking := Booking{Id: bookingId, User: "", Members: 0}
+	err = json.Unmarshal(reqbody, &booking)
+	if err != nil {
+		return
+	}
+	db.Save(booking)
+
+	log.Println(yellow.Render("Endpoint hit: Updated booking Nº", key))
+	json.NewEncoder(w).Encode(booking)
+}
+
 func handleRequests() {
-	log.Println("Starting http server on port 10000")
-	log.Println("Stop the server with CTRL + C")
+	log.Printf("Starting http server on port %s\n", blue.Render("10000"))
+	log.Printf("Stop the server with %s\n", red.Render("CTRL + C"))
 	// we create a router to redirect the connection to the webpage
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/", homePage)
 	router.HandleFunc("/new-booking", createBooking).Methods("POST")
 	router.HandleFunc("/all-bookings", returnAllBookings)
 	router.HandleFunc("/booking/{id}", returnSingleBooking)
-	router.HandleFunc("delete-booking/{id}", deleteBooking)
+	router.HandleFunc("/delete-booking/{id}", deleteBooking)
+	router.HandleFunc("/update-booking/{id}", updateBooking)
 	log.Fatal(http.ListenAndServe(":10000", router))
 
 }
@@ -114,9 +147,9 @@ func main() {
 	db, err = gorm.Open("mysql", "potato:potato@tcp(127.0.0.1:3306)/Football?charset=utf8&parseTime=True")
 
 	if err != nil {
-		log.Fatalln("Failed to open the database.")
+		log.Fatalln(red.Render("Failed to open the database."))
 	} else {
-		log.Println("Connected to the database")
+		log.Printf("%s to the database\n", green.Render("Connected"))
 	}
 
 	db.AutoMigrate(Booking{})
